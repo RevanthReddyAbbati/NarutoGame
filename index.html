@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chakra Arena: Ninja Chronicles</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #0b0e14;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            user-select: none;
+        }
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+        }
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .hud-box {
+            background: rgba(16, 22, 34, 0.75);
+            border: 2px solid #ff6b00;
+            border-radius: 8px;
+            padding: 12px 24px;
+            color: #fff;
+            font-size: 18px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 0 15px rgba(255, 107, 0, 0.3);
+            pointer-events: auto;
+        }
+        #stats-container {
+            display: flex;
+            gap: 20px;
+        }
+        .bar-container {
+            width: 200px;
+            height: 16px;
+            background: #222;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-top: 4px;
+            border: 1px solid #444;
+        }
+        #hp-bar {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, #ff3333, #ff6666);
+            transition: width 0.2s;
+        }
+        #chakra-bar {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, #0099ff, #66ccff);
+            transition: width 0.2s;
+        }
+        #game-over-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(6, 9, 15, 0.9);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.5s ease;
+        }
+        #game-over-screen.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        h1 {
+            color: #ff6b00;
+            font-size: 48px;
+            margin-bottom: 10px;
+            text-shadow: 0 0 20px rgba(255,107,0,0.6);
+        }
+        .btn {
+            background: #ff6b00;
+            color: white;
+            border: none;
+            padding: 12px 32px;
+            font-size: 18px;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+            text-transform: uppercase;
+            transition: background 0.2s, transform 0.1s;
+            box-shadow: 0 5px 15px rgba(255,107,0,0.4);
+        }
+        .btn:hover {
+            background: #ff8533;
+            transform: translateY(-2px);
+        }
+        .btn:active {
+            transform: translateY(1px);
+        }
+        #controls-hint {
+            align-self: center;
+            margin-bottom: 20px;
+            background: rgba(0,0,0,0.6);
+            padding: 10px 20px;
+            border-radius: 20px;
+            color: #aaa;
+            font-size: 14px;
+            border: 1px solid #333;
+        }
+    </style>
+    <!-- Include Three.js via CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+
+    <div id="canvas-container"></div>
+
+    <div id="ui-layer">
+        <div id="stats-container">
+            <div class="hud-box">
+                <div>HEALTH</div>
+                <div class="bar-container"><div id="hp-bar"></div></div>
+            </div>
+            <div class="hud-box">
+                <div>CHAKRA</div>
+                <div class="bar-container"><div id="chakra-bar"></div></div>
+            </div>
+            <div class="hud-box" style="min-width: 100px; text-align: center;">
+                SCORE: <span id="score-val">0</span>
+            </div>
+        </div>
+
+        <div id="controls-hint">
+            Move: <strong>WASD / Arrows</strong> | Ultimate Attack: <strong>SPACEBAR</strong>
+        </div>
+    </div>
+
+    <div id="game-over-screen">
+        <h1 id="game-title">CHAKRA ARENA</h1>
+        <p id="game-status-text">Defend the village from the rogue ninja shades!</p>
+        <button class="btn" id="start-btn" onclick="resetGame()">Start Mission</button>
+    </div>
+
+    <script>
+        // --- GAME CONFIGURATION & STATE ---
+        let scene, camera, renderer;
+        let player, ground;
+        let keys = { w: false, a: false, s: false, d: false, Space: false };
+        let moveDirection = new THREE.Vector3();
+        
+        // Game Metrics
+        let playerStats = { hp: 100, maxHp: 100, chakra: 100, maxChakra: 100, score: 0 };
+        let isGameOver = true;
+        
+        // Entities & Collections
+        let enemies = [];
+        let jutsus = [];
+        let particles = [];
+        
+        // Gameplay Settings
+        const PLAYER_SPEED = 0.15;
+        const ENEMY_SPEED = 0.06;
+        const JUTSU_SPEED = 0.3;
+        
+        // Initialize Core Engine
+        init();
+        animate();
+
+        function init() {
+            const container = document.getElementById('canvas-container');
+            
+            // Scene Setup
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x06090f);
+            scene.fog = new THREE.FogExp2(0x06090f, 0.03);
+
+            // Camera Setup
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+            
+            // Renderer Setup
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            container.appendChild(renderer.domElement);
+
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffaa66, 0.8);
+            dirLight.position.set(20, 40, 20);
+            dirLight.castShadow = true;
+            dirLight.shadow.mapSize.width = 2048;
+            dirLight.shadow.mapSize.height = 2048;
+            dirLight.shadow.camera.near = 0.5;
+            dirLight.shadow.camera.far = 100;
+            const d = 40;
+            dirLight.shadow.camera.left = -d;
+            dirLight.shadow.camera.right = d;
+            dirLight.shadow.camera.top = d;
+            dirLight.shadow.camera.bottom = -d;
+            scene.add(dirLight);
+
+            // Ground Grid/Floor (Stylized Battlefield)
+            const groundGeo = new THREE.PlaneGeometry(200, 200);
+            const groundMat = new THREE.MeshStandardMaterial({ 
+                color: 0x111622, 
+                roughness: 0.8,
+                metalness: 0.2
+            });
+            ground = new THREE.Mesh(groundGeo, groundMat);
+            ground.rotation.x = -Math.PI / 2;
+            ground.receiveShadow = true;
+            scene.add(ground);
+
+            // Decorative Grid Lines
+            const grid = new THREE.GridHelper(200, 50, 0xff6b00, 0x222b3c);
+            grid.position.y = 0.01;
+            scene.add(grid);
+
+            // Create Player (Stylized Abstract Ninja Representation)
+            createPlayerMesh();
+
+            // Event Listeners
+            window.addEventListener('resize', onWindowResize, false);
+            window.addEventListener('keydown', (e) => handleInput(e, true));
+            window.addEventListener('keyup', (e) => handleInput(e, false));
+
+            // Show Welcome Screen Initially
+            document.getElementById('game-over-screen').classList.add('active');
+        }
+
+        function createPlayerMesh() {
+            // Group to hold all parts of the player
+            player = new THREE.Group();
+            
+            // Body (Anisotropic dynamic orange jumpsuit motif)
+            const bodyGeo = new THREE.CylinderGeometry(0.4, 0.2, 1.6, 8);
+            const bodyMat = new THREE.MeshStandardMaterial({ color: 0xff5500, roughness: 0.5 });
+            const body = new THREE.Mesh(bodyGeo, bodyMat);
+            body.position.y = 0.8;
+            body.castShadow = true;
+            player.add(body);
+
+            // Head
+            const headGeo = new THREE.SphereGeometry(0.35, 16, 16);
+            const headMat = new THREE.MeshStandardMaterial({ color: 0xffdbac, roughness: 0.6 });
+            const head = new THREE.Mesh(headGeo, headMat);
+            head.position.y = 1.8;
+            head.castShadow = true;
+            player.add(head);
+
+            // Headband (Iconic Feature)
+            const bandGeo = new THREE.CylinderGeometry(0.37, 0.37, 0.15, 16, 1, true);
+            const bandMat = new THREE.MeshStandardMaterial({ color: 0x111122 });
+            const band = new THREE.Mesh(bandGeo, bandMat);
+            band.position.y = 1.85;
+            player.add(band);
+
+            // Glowing Aura indicator underneath player
+            const auraGeo = new THREE.RingGeometry(0.1, 0.6, 16);
+            const auraMat = new THREE.MeshBasicMaterial({ color: 0x00aaff, side: THREE.DoubleSide, transparent: true, opacity: 0.4 });
+            const aura = new THREE.Mesh(auraGeo, auraMat);
+            aura.rotation.x = Math.PI/2;
+            aura.position.y = 0.02;
+            player.add(aura);
+
+            player.position.set(0, 0, 0);
+            scene.add(player);
+        }
+
+        // --- INPUT PROCESSING ---
+        function handleInput(event, isDown) {
+            let key = event.key.toLowerCase();
+            if (event.code === 'Space') key = 'Space';
+
+            if (key === 'w' || event.key === 'ArrowUp') keys.w = isDown;
+            if (key === 'a' || event.key === 'ArrowLeft') keys.a = isDown;
+            if (key === 's' || event.key === 'ArrowDown') keys.s = isDown;
+            if (key === 'd' || event.key === 'ArrowRight') keys.d = isDown;
+            
+            if (key === 'Space' && isDown && !isGameOver) {
+                castRasendan();
+            }
+        }
+
+        // --- GAME ACTIONS & JUTSU SYSTEMS ---
+        function castRasendan() {
+            if (playerStats.chakra < 25) return; // Insufficient Chakra
+            
+            playerStats.chakra -= 25;
+            updateUI();
+
+            // Generate Rasengan Projectile
+            const jutsuGeo = new THREE.SphereGeometry(0.5, 32, 32);
+            const jutsuMat = new THREE.MeshBasicMaterial({ 
+                color: 0x00dfff,
+                transparent: true,
+                opacity: 0.85,
+                wireframe: true
+            });
+            const jutsu = new THREE.Mesh(jutsuGeo, jutsuMat);
+            
+            // Position just in front of player based on rotation
+            const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(player.quaternion);
+            jutsu.position.copy(player.position).add(forward.clone().multiplyScalar(1));
+            jutsu.position.y = 1.2; 
+            
+            // Store forward vector on mesh structure safely
+            jutsu.userData = {
+                direction: forward.normalize(),
+                life: 60, // frames alive
+                radius: 0.5
+            };
+
+            // Add dynamic inner core glow
+            const coreGeo = new THREE.SphereGeometry(0.25, 16, 16);
+            const coreMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+            const core = new THREE.Mesh(coreGeo, coreMat);
+            jutsu.add(core);
+
+            scene.add(jutsu);
+            jutsus.push(jutsu);
+
+            // Trigger burst particle animation visually
+            createSparks(player.position, 0x00aaff, 15);
+        }
+
+        function spawnEnemy() {
+            if (isGameOver) return;
+
+            // Spawn in a random circle trajectory away from player
+            const angle = Math.random() * Math.PI * 2;
+            const distance = 25 + Math.random() * 10;
+            const x = player.position.x + Math.cos(angle) * distance;
+            const z = player.position.z + Math.sin(angle) * distance;
+
+            const enemy = new THREE.Group();
+            
+            // Shadow entity body mesh
+            const bodyGeo = new THREE.BoxGeometry(0.8, 1.5, 0.8);
+            const bodyMat = new THREE.MeshStandardMaterial({ color: 0x441155, roughness: 0.4, metalness: 0.3 });
+            const body = new THREE.Mesh(bodyGeo, bodyMat);
+            body.position.y = 0.75;
+            body.castShadow = true;
+            enemy.add(body);
+
+            // Glowing red visual focus sensors (Eyes)
+            const eyeGeo = new THREE.SphereGeometry(0.1, 8, 8);
+            const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff0033 });
+            const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
+            leftEye.position.set(-0.2, 1.2, -0.42);
+            const rightEye = leftEye.clone();
+            rightEye.position.x = 0.2;
+            enemy.add(leftEye, rightEye);
+
+            enemy.position.set(x, 0, z);
+            scene.add(enemy);
+            enemies.push(enemy);
+        }
+
+        function createSparks(pos, colorHex, count) {
+            for (let i = 0; i < count; i++) {
+                const pGeo = new THREE.BufferGeometry();
+                const pMat = new THREE.PointsMaterial({
+                    color: colorHex,
+                    size: 0.2,
+                    transparent: true,
+                    opacity: 1,
+                    blending: THREE.AdditiveBlending
+                });
+                
+                const positions = new Float32Array(3); // 1 particle
+                positions[0] = pos.x;
+                positions[1] = pos.y + 0.5 + (Math.random() - 0.5);
+                positions[2] = pos.z;
+                pGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                
+                const p = new THREE.Points(pGeo, pMat);
+                p.userData = {
+                    vel: new THREE.Vector3(
+                        (Math.random() - 0.5) * 0.3,
+                        (Math.random() - 0.2) * 0.3,
+                        (Math.random() - 0.5) * 0.3
+                    ),
+                    life: 30 + Math.random() * 20
+                };
+                scene.add(p);
+                particles.push(p);
+            }
+        }
+
+        // --- PIPELINE LOOP ENGINE ---
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if (!isGameOver) {
+                updatePlayer();
+                updateJutsus();
+                updateEnemies();
+                updateParticles();
+                
+                // Natural Passive Chakra Regeneration
+                if (playerStats.chakra < playerStats.maxChakra) {
+                    playerStats.chakra = Math.min(playerStats.maxChakra, playerStats.chakra + 0.1);
+                    updateUI();
+                }
+
+                // Dynamic Spawn rates managed adaptively
+                if (Math.random() < 0.03 && enemies.length < 30) {
+                    spawnEnemy();
+                }
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        function updatePlayer() {
+            moveDirection.set(0, 0, 0);
+
+            if (keys.w) moveDirection.z -= 1;
+            if (keys.s) moveDirection.z += 1;
+            if (keys.a) moveDirection.x -= 1;
+            if (keys.d) moveDirection.x += 1;
+
+            if (moveDirection.lengthSq() > 0) {
+                moveDirection.normalize();
+                player.position.add(moveDirection.clone().multiplyScalar(PLAYER_SPEED));
+                
+                // Rotate smoothly towards movement target orientation vector
+                const targetRotation = Math.atan2(moveDirection.x, moveDirection.z);
+                player.rotation.y = targetRotation + Math.PI; // Match forward baseline vector mapping
+            }
+
+            // Dynamic tracking fluid Camera rigging setup
+            camera.position.set(player.position.x, player.position.y + 10, player.position.z + 14);
+            camera.lookAt(player.position.x, player.position.y + 1, player.position.z);
+        }
+
+        function updateJutsus() {
+            for (let i = jutsus.length - 1; i >= 0; i--) {
+                const j = jutsus[i];
+                j.position.add(j.userData.direction.clone().multiplyScalar(JUTSU_SPEED));
+                j.rotation.y += 0.2; // Visual spiral acceleration spin effect
+                j.rotation.x += 0.1;
+                j.userData.life--;
+
+                // Dynamic broad-phase boundary processing against targets
+                let hitTarget = false;
+                for (let eIdx = enemies.length - 1; eIdx >= 0; eIdx--) {
+                    const enemy = enemies[eIdx];
+                    const dist = j.position.distanceTo(enemy.position);
+                    
+                    if (dist < (j.userData.radius + 0.6)) { // Collision boundary detected
+                        createSparks(enemy.position, 0x00f0ff, 25);
+                        scene.remove(enemy);
+                        enemies.splice(eIdx, 1);
+                        
+                        playerStats.score += 100;
+                        hitTarget = true;
+                        break;
+                    }
+                }
+
+                if (j.userData.life <= 0 || hitTarget || j.position.length() > 150) {
+                    scene.remove(j);
+                    jutsus.splice(i, 1);
+                }
+            }
+        }
+
+        function updateEnemies() {
+            for (let i = enemies.length - 1; i >= 0; i--) {
+                const enemy = enemies[i];
+                
+                // Target Tracking Logic Vector mapping
+                const dirToPlayer = new THREE.Vector3().subVectors(player.position, enemy.position);
+                dirToPlayer.y = 0; // maintain floor plane locks
+                dirToPlayer.normalize();
+                
+                enemy.position.add(dirToPlayer.multiplyScalar(ENEMY_SPEED));
+                enemy.lookAt(player.position.x, enemy.position.y, player.position.z);
+
+                // Collision with player check
+                const distanceToPlayer = enemy.position.distanceTo(player.position);
+                if (distanceToPlayer < 1.0) {
+                    playerStats.hp -= 15;
+                    createSparks(player.position, 0xff1100, 10);
+                    updateUI();
+                    
+                    // Remove current invading unit after payload impact clean-up cycles
+                    scene.remove(enemy);
+                    enemies.splice(i, 1);
+
+                    if (playerStats.hp <= 0) {
+                        endGame();
+                    }
+                }
+            }
+        }
+
+        function updateParticles() {
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                const posArr = p.geometry.attributes.position.array;
+                
+                posArr[0] += p.userData.vel.x;
+                posArr[1] += p.userData.vel.y;
+                posArr[2] += p.userData.vel.z;
+                p.geometry.attributes.position.needsUpdate = true;
+                
+                p.userData.life--;
+                if (p.userData.life <= 0) {
+                    scene.remove(p);
+                    particles.splice(i, 1);
+                }
+            }
+        }
+
+        // --- MANAGEMENT / SYSTEM METHODS ---
+        function updateUI() {
+            document.getElementById('hp-bar').style.width = `${Math.max(0, (playerStats.hp / playerStats.maxHp) * 100)}%`;
+            document.getElementById('chakra-bar').style.width = `${(playerStats.chakra / playerStats.maxChakra) * 100}%`;
+            document.getElementById('score-val').innerText = playerStats.score;
+        }
+
+        function resetGame() {
+            // Clean out current scenes elements collections entirely
+            enemies.forEach(e => scene.remove(e));
+            jutsus.forEach(j => scene.remove(j));
+            particles.forEach(p => scene.remove(p));
+            
+            enemies = [];
+            jutsus = [];
+            particles = [];
+
+            // Metrics configuration
+            playerStats = { hp: 100, maxHp: 100, chakra: 100, maxChakra: 100, score: 0 };
+            player.position.set(0, 0, 0);
+            updateUI();
+
+            isGameOver = false;
+            document.getElementById('game-over-screen').classList.remove('active');
+        }
+
+        function endGame() {
+            isGameOver = true;
+            document.getElementById('game-title').innerText = "MISSION FAILED";
+            document.getElementById('game-status-text').innerText = `You fell in battle. Final Score: ${playerStats.score}`;
+            document.getElementById('start-btn').innerText = "Try Again";
+            document.getElementById('game-over-screen').classList.add('active');
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+    </script>
+</body>
+</html>
