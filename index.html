@@ -3,576 +3,527 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chakra Arena: Ninja Chronicles</title>
+    <title>Shinobi Chronicles: Advanced WebGL Engine</title>
     <style>
+        :root {
+            --primary: #ff6b00;
+            --secondary: #00dfff;
+            --bg-glass: rgba(10, 15, 25, 0.6);
+        }
         body {
-            margin: 0;
-            padding: 0;
-            overflow: hidden;
-            background-color: #0b0e14;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            user-select: none;
+            margin: 0; overflow: hidden; background: #000;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            user-select: none; color: white;
         }
-        #canvas-container {
-            width: 100vw;
-            height: 100vh;
-        }
+        #canvas-container { width: 100vw; height: 100vh; position: absolute; z-index: 1; }
+        
+        /* Modern Glassmorphism UI */
         #ui-layer {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            padding: 20px;
-            box-sizing: border-box;
+            position: absolute; z-index: 10; width: 100%; height: 100%;
+            pointer-events: none; padding: 30px; box-sizing: border-box;
+            display: flex; flex-direction: column; justify-content: space-between;
         }
-        .hud-box {
-            background: rgba(16, 22, 34, 0.75);
-            border: 2px solid #ff6b00;
-            border-radius: 8px;
-            padding: 12px 24px;
-            color: #fff;
-            font-size: 18px;
-            font-weight: bold;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            box-shadow: 0 0 15px rgba(255, 107, 0, 0.3);
-            pointer-events: auto;
-        }
-        #stats-container {
-            display: flex;
-            gap: 20px;
-        }
-        .bar-container {
-            width: 200px;
-            height: 16px;
-            background: #222;
-            border-radius: 8px;
-            overflow: hidden;
-            margin-top: 4px;
-            border: 1px solid #444;
-        }
-        #hp-bar {
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, #ff3333, #ff6666);
-            transition: width 0.2s;
-        }
-        #chakra-bar {
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, #0099ff, #66ccff);
-            transition: width 0.2s;
-        }
-        #game-over-screen {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background: rgba(6, 9, 15, 0.9);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            color: white;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.5s ease;
-        }
-        #game-over-screen.active {
-            opacity: 1;
-            pointer-events: auto;
-        }
-        h1 {
-            color: #ff6b00;
-            font-size: 48px;
-            margin-bottom: 10px;
-            text-shadow: 0 0 20px rgba(255,107,0,0.6);
-        }
-        .btn {
-            background: #ff6b00;
-            color: white;
-            border: none;
-            padding: 12px 32px;
-            font-size: 18px;
-            font-weight: bold;
+        .hud-container { display: flex; gap: 30px; }
+        .hud-panel {
+            background: var(--bg-glass);
+            backdrop-filter: blur(10px);
+            border-left: 4px solid var(--primary);
+            padding: 15px 25px;
             border-radius: 4px;
-            cursor: pointer;
-            text-transform: uppercase;
-            transition: background 0.2s, transform 0.1s;
-            box-shadow: 0 5px 15px rgba(255,107,0,0.4);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
         }
-        .btn:hover {
-            background: #ff8533;
-            transform: translateY(-2px);
+        .hud-panel h3 { margin: 0 0 10px 0; font-size: 14px; letter-spacing: 2px; color: #aaa; }
+        .bar-wrap { width: 250px; height: 12px; background: rgba(0,0,0,0.5); border-radius: 6px; overflow: hidden; }
+        .bar-fill { height: 100%; transition: width 0.1s linear; }
+        #hp-fill { background: linear-gradient(90deg, #ff0044, #ff5555); width: 100%; }
+        #cp-fill { background: linear-gradient(90deg, #0088ff, var(--secondary)); width: 100%; }
+        
+        #score-panel { border-left-color: #ffd700; font-size: 24px; font-weight: bold; }
+        
+        .instructions {
+            align-self: center; background: var(--bg-glass); backdrop-filter: blur(5px);
+            padding: 15px 30px; border-radius: 30px; border: 1px solid rgba(255,255,255,0.1);
+            letter-spacing: 1px;
         }
-        .btn:active {
-            transform: translateY(1px);
+        .key { background: #fff; color: #000; padding: 2px 8px; border-radius: 4px; font-weight: bold; }
+
+        /* Game Over / Loading Screen */
+        #overlay {
+            position: absolute; z-index: 20; width: 100%; height: 100%;
+            background: rgba(5, 8, 12, 0.9);
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            transition: opacity 0.5s;
         }
-        #controls-hint {
-            align-self: center;
-            margin-bottom: 20px;
-            background: rgba(0,0,0,0.6);
-            padding: 10px 20px;
-            border-radius: 20px;
-            color: #aaa;
-            font-size: 14px;
-            border: 1px solid #333;
+        #overlay h1 { font-size: 64px; margin: 0; color: var(--primary); text-transform: uppercase; letter-spacing: 5px;}
+        #overlay p { font-size: 20px; color: #ccc; margin-bottom: 40px; }
+        .btn {
+            background: transparent; border: 2px solid var(--primary); color: var(--primary);
+            padding: 15px 40px; font-size: 18px; font-weight: bold; cursor: pointer;
+            text-transform: uppercase; letter-spacing: 2px; transition: all 0.3s;
+            pointer-events: auto;
         }
+        .btn:hover { background: var(--primary); color: #000; box-shadow: 0 0 20px rgba(255, 107, 0, 0.5); }
     </style>
-    <!-- Include Three.js via CDN -->
+    
+    <!-- Core Three.js and Loaders -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <!-- Post Processing for AAA Bloom effects -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
 </head>
 <body>
 
-    <div id="canvas-container"></div>
+    <div id="overlay">
+        <h1 id="title-text">Engine Initializing</h1>
+        <p id="sub-text">Loading Assets...</p>
+        <button class="btn" id="action-btn" style="display:none;" onclick="startGame()">Commence</button>
+    </div>
 
     <div id="ui-layer">
-        <div id="stats-container">
-            <div class="hud-box">
-                <div>HEALTH</div>
-                <div class="bar-container"><div id="hp-bar"></div></div>
+        <div class="hud-container">
+            <div class="hud-panel">
+                <h3>VITALITY</h3>
+                <div class="bar-wrap"><div id="hp-fill" class="bar-fill"></div></div>
             </div>
-            <div class="hud-box">
-                <div>CHAKRA</div>
-                <div class="bar-container"><div id="chakra-bar"></div></div>
+            <div class="hud-panel" style="border-left-color: var(--secondary);">
+                <h3>CHAKRA</h3>
+                <div class="bar-wrap"><div id="cp-fill" class="bar-fill"></div></div>
             </div>
-            <div class="hud-box" style="min-width: 100px; text-align: center;">
-                SCORE: <span id="score-val">0</span>
+            <div class="hud-panel" id="score-panel">
+                KILLS: <span id="score-val">0</span>
             </div>
         </div>
-
-        <div id="controls-hint">
-            Move: <strong>WASD / Arrows</strong> | Ultimate Attack: <strong>SPACEBAR</strong>
+        <div class="instructions">
+            Movement: <span class="key">W</span> <span class="key">A</span> <span class="key">S</span> <span class="key">D</span> &nbsp;|&nbsp; Rasengan: <span class="key">SPACE</span>
         </div>
     </div>
 
-    <div id="game-over-screen">
-        <h1 id="game-title">CHAKRA ARENA</h1>
-        <p id="game-status-text">Defend the village from the rogue ninja shades!</p>
-        <button class="btn" id="start-btn" onclick="resetGame()">Start Mission</button>
-    </div>
+    <div id="canvas-container"></div>
 
     <script>
-        // --- GAME CONFIGURATION & STATE ---
-        let scene, camera, renderer;
-        let player, ground;
-        let keys = { w: false, a: false, s: false, d: false, Space: false };
-        let moveDirection = new THREE.Vector3();
+        // --- ARCHITECTURE & STATE ---
+        let scene, camera, renderer, composer;
+        let player, playerMixer;
+        let isLoaded = false, isPlaying = false;
         
-        // Game Metrics
-        let playerStats = { hp: 100, maxHp: 100, chakra: 100, maxChakra: 100, score: 0 };
-        let isGameOver = true;
+        // Input Map
+        const keys = { w: false, a: false, s: false, d: false, space: false };
+        const mouse = new THREE.Vector2();
         
-        // Entities & Collections
-        let enemies = [];
-        let jutsus = [];
-        let particles = [];
+        // Entity Pools
+        const projectiles = [];
+        const enemies = [];
+        const clock = new THREE.Clock();
         
-        // Gameplay Settings
-        const PLAYER_SPEED = 0.15;
-        const ENEMY_SPEED = 0.06;
-        const JUTSU_SPEED = 0.3;
+        // Game Logic State
+        const state = { hp: 100, cp: 100, score: 0 };
+        const SPEED = 12.0; 
+        const PROJECTILE_SPEED = 25.0;
         
-        // Initialize Core Engine
-        init();
-        animate();
+        initEngine();
 
-        function init() {
+        function initEngine() {
             const container = document.getElementById('canvas-container');
             
-            // Scene Setup
+            // 1. Scene & Environment
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x06090f);
-            scene.fog = new THREE.FogExp2(0x06090f, 0.03);
-
-            // Camera Setup
-            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+            scene.fog = new THREE.FogExp2(0x050810, 0.015);
             
-            // Renderer Setup
-            renderer = new THREE.WebGLRenderer({ antialias: true });
+            // 2. Camera Setup (Isometric tracking)
+            camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 500);
+            
+            // 3. Renderer with PBR capabilities
+            renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
             renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
             renderer.shadowMap.enabled = true;
             renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = 1.2;
             container.appendChild(renderer.domElement);
 
-            // Lighting
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
-            scene.add(ambientLight);
+            // 4. Post-Processing Pipeline (The "AAA" Look)
+            const renderScene = new THREE.RenderPass(scene, camera);
+            const bloomPass = new THREE.UnrealBloomPass(
+                new THREE.Vector2(window.innerWidth, window.innerHeight),
+                1.5, // intensity
+                0.4, // radius
+                0.85 // threshold
+            );
+            composer = new THREE.EffectComposer(renderer);
+            composer.addPass(renderScene);
+            composer.addPass(bloomPass);
 
-            const dirLight = new THREE.DirectionalLight(0xffaa66, 0.8);
-            dirLight.position.set(20, 40, 20);
+            // 5. Lighting Setup
+            const hemiLight = new THREE.HemisphereLight(0x4466ff, 0x111122, 0.6);
+            scene.add(hemiLight);
+            
+            const dirLight = new THREE.DirectionalLight(0xffddaa, 1.5);
+            dirLight.position.set(50, 100, 50);
             dirLight.castShadow = true;
             dirLight.shadow.mapSize.width = 2048;
             dirLight.shadow.mapSize.height = 2048;
             dirLight.shadow.camera.near = 0.5;
-            dirLight.shadow.camera.far = 100;
-            const d = 40;
-            dirLight.shadow.camera.left = -d;
-            dirLight.shadow.camera.right = d;
-            dirLight.shadow.camera.top = d;
-            dirLight.shadow.camera.bottom = -d;
+            dirLight.shadow.camera.far = 200;
+            dirLight.shadow.bias = -0.001;
+            const d = 50;
+            dirLight.shadow.camera.left = -d; dirLight.shadow.camera.right = d;
+            dirLight.shadow.camera.top = d; dirLight.shadow.camera.bottom = -d;
             scene.add(dirLight);
 
-            // Ground Grid/Floor (Stylized Battlefield)
-            const groundGeo = new THREE.PlaneGeometry(200, 200);
-            const groundMat = new THREE.MeshStandardMaterial({ 
-                color: 0x111622, 
-                roughness: 0.8,
-                metalness: 0.2
+            // 6. Environment Design
+            createArena();
+
+            // 7. Asset Pipeline - Loading the specific GLB model
+            loadPlayerModel();
+
+            // Listeners
+            window.addEventListener('resize', onWindowResize);
+            document.addEventListener('keydown', (e) => handleInput(e, true));
+            document.addEventListener('keyup', (e) => handleInput(e, false));
+            
+            animate();
+        }
+
+        function createArena() {
+            // High-end PBR floor
+            const floorGeo = new THREE.PlaneGeometry(300, 300);
+            const floorMat = new THREE.MeshStandardMaterial({ 
+                color: 0x1a1f2b, 
+                roughness: 0.1, 
+                metalness: 0.8 
             });
-            ground = new THREE.Mesh(groundGeo, groundMat);
-            ground.rotation.x = -Math.PI / 2;
-            ground.receiveShadow = true;
-            scene.add(ground);
+            const floor = new THREE.Mesh(floorGeo, floorMat);
+            floor.rotation.x = -Math.PI / 2;
+            floor.receiveShadow = true;
+            scene.add(floor);
 
-            // Decorative Grid Lines
-            const grid = new THREE.GridHelper(200, 50, 0xff6b00, 0x222b3c);
-            grid.position.y = 0.01;
+            // Add aesthetic neon grid mapping
+            const grid = new THREE.GridHelper(300, 100, 0x00dfff, 0x111625);
+            grid.position.y = 0.05;
+            grid.material.transparent = true;
+            grid.material.opacity = 0.3;
             scene.add(grid);
-
-            // Create Player (Stylized Abstract Ninja Representation)
-            createPlayerMesh();
-
-            // Event Listeners
-            window.addEventListener('resize', onWindowResize, false);
-            window.addEventListener('keydown', (e) => handleInput(e, true));
-            window.addEventListener('keyup', (e) => handleInput(e, false));
-
-            // Show Welcome Screen Initially
-            document.getElementById('game-over-screen').classList.add('active');
         }
 
-        function createPlayerMesh() {
-            // Group to hold all parts of the player
+        function loadPlayerModel() {
             player = new THREE.Group();
-            
-            // Body (Anisotropic dynamic orange jumpsuit motif)
-            const bodyGeo = new THREE.CylinderGeometry(0.4, 0.2, 1.6, 8);
-            const bodyMat = new THREE.MeshStandardMaterial({ color: 0xff5500, roughness: 0.5 });
-            const body = new THREE.Mesh(bodyGeo, bodyMat);
-            body.position.y = 0.8;
-            body.castShadow = true;
-            player.add(body);
-
-            // Head
-            const headGeo = new THREE.SphereGeometry(0.35, 16, 16);
-            const headMat = new THREE.MeshStandardMaterial({ color: 0xffdbac, roughness: 0.6 });
-            const head = new THREE.Mesh(headGeo, headMat);
-            head.position.y = 1.8;
-            head.castShadow = true;
-            player.add(head);
-
-            // Headband (Iconic Feature)
-            const bandGeo = new THREE.CylinderGeometry(0.37, 0.37, 0.15, 16, 1, true);
-            const bandMat = new THREE.MeshStandardMaterial({ color: 0x111122 });
-            const band = new THREE.Mesh(bandGeo, bandMat);
-            band.position.y = 1.85;
-            player.add(band);
-
-            // Glowing Aura indicator underneath player
-            const auraGeo = new THREE.RingGeometry(0.1, 0.6, 16);
-            const auraMat = new THREE.MeshBasicMaterial({ color: 0x00aaff, side: THREE.DoubleSide, transparent: true, opacity: 0.4 });
-            const aura = new THREE.Mesh(auraGeo, auraMat);
-            aura.rotation.x = Math.PI/2;
-            aura.position.y = 0.02;
-            player.add(aura);
-
-            player.position.set(0, 0, 0);
             scene.add(player);
+
+            const loader = new THREE.GLTFLoader();
+            
+            // Loading the exact asset requested
+            loader.load(
+                'naruto_sage_mode.glb',
+                function (gltf) {
+                    const model = gltf.scene;
+                    model.scale.set(1.5, 1.5, 1.5); // Adjust based on your model's native scale
+                    model.traverse((child) => {
+                        if (child.isMesh) {
+                            child.castShadow = true;
+                            child.receiveShadow = true;
+                        }
+                    });
+                    player.add(model);
+                    
+                    // Setup animations if your GLB has them
+                    if (gltf.animations && gltf.animations.length > 0) {
+                        playerMixer = new THREE.AnimationMixer(model);
+                        const idleAnim = playerMixer.clipAction(gltf.animations[0]); 
+                        idleAnim.play();
+                    }
+
+                    readyGame();
+                },
+                function (xhr) {
+                    const percent = Math.round((xhr.loaded / xhr.total) * 100);
+                    document.getElementById('sub-text').innerText = `Loading Assets: ${percent || '...'}%`;
+                },
+                function (error) {
+                    console.warn("GLB not found in root. Generating professional fallback mesh...");
+                    generateFallbackPlayer();
+                    readyGame();
+                }
+            );
+
+            // Add dynamic point light to player (Chakra glow)
+            const auraLight = new THREE.PointLight(0xff6b00, 1, 10);
+            auraLight.position.y = 2;
+            player.add(auraLight);
         }
 
-        // --- INPUT PROCESSING ---
-        function handleInput(event, isDown) {
-            let key = event.key.toLowerCase();
-            if (event.code === 'Space') key = 'Space';
+        function generateFallbackPlayer() {
+            // High-fidelity fallback if the GLB file isn't uploaded yet
+            const geo = new THREE.CapsuleGeometry(0.6, 1.8, 4, 16);
+            const mat = new THREE.MeshStandardMaterial({ 
+                color: 0xff5500, roughness: 0.3, metalness: 0.1,
+                emissive: 0xff2200, emissiveIntensity: 0.2
+            });
+            const mesh = new THREE.Mesh(geo, mat);
+            mesh.position.y = 1.5;
+            mesh.castShadow = true;
+            player.add(mesh);
+        }
 
-            if (key === 'w' || event.key === 'ArrowUp') keys.w = isDown;
-            if (key === 'a' || event.key === 'ArrowLeft') keys.a = isDown;
-            if (key === 's' || event.key === 'ArrowDown') keys.s = isDown;
-            if (key === 'd' || event.key === 'ArrowRight') keys.d = isDown;
-            
-            if (key === 'Space' && isDown && !isGameOver) {
-                castRasendan();
+        function readyGame() {
+            isLoaded = true;
+            document.getElementById('title-text').innerText = "SYSTEM READY";
+            document.getElementById('sub-text').innerText = "Standby for combat.";
+            document.getElementById('action-btn').style.display = 'block';
+        }
+
+        function startGame() {
+            if (!isLoaded) return;
+            isPlaying = true;
+            document.getElementById('overlay').style.opacity = 0;
+            setTimeout(() => document.getElementById('overlay').style.display = 'none', 500);
+            resetState();
+        }
+
+        // --- COMBAT & INPUT LOGIC ---
+        function handleInput(e, isDown) {
+            const k = e.key.toLowerCase();
+            if (k === 'w') keys.w = isDown;
+            if (k === 'a') keys.a = isDown;
+            if (k === 's') keys.s = isDown;
+            if (k === 'd') keys.d = isDown;
+            if (e.code === 'Space') {
+                if (isDown && !keys.space) executeAttack(); // Prevent holding down
+                keys.space = isDown;
             }
         }
 
-        // --- GAME ACTIONS & JUTSU SYSTEMS ---
-        function castRasendan() {
-            if (playerStats.chakra < 25) return; // Insufficient Chakra
+        function executeAttack() {
+            if (!isPlaying || state.cp < 20) return;
             
-            playerStats.chakra -= 25;
-            updateUI();
+            state.cp -= 20;
+            updateHUD();
 
-            // Generate Rasengan Projectile
-            const jutsuGeo = new THREE.SphereGeometry(0.5, 32, 32);
-            const jutsuMat = new THREE.MeshBasicMaterial({ 
-                color: 0x00dfff,
+            // Create Rasengan with Bloom Material
+            const geo = new THREE.SphereGeometry(0.8, 32, 32);
+            const mat = new THREE.MeshStandardMaterial({
+                color: 0xffffff,
+                emissive: 0x00dfff,
+                emissiveIntensity: 5.0, // High intensity triggers the UnrealBloomPass
+                roughness: 0.0,
                 transparent: true,
-                opacity: 0.85,
-                wireframe: true
+                opacity: 0.9
             });
-            const jutsu = new THREE.Mesh(jutsuGeo, jutsuMat);
+            const sphere = new THREE.Mesh(geo, mat);
             
-            // Position just in front of player based on rotation
-            const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(player.quaternion);
-            jutsu.position.copy(player.position).add(forward.clone().multiplyScalar(1));
-            jutsu.position.y = 1.2; 
+            // Calculate precise forward vector
+            const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(player.quaternion).normalize();
             
-            // Store forward vector on mesh structure safely
-            jutsu.userData = {
-                direction: forward.normalize(),
-                life: 60, // frames alive
-                radius: 0.5
-            };
-
-            // Add dynamic inner core glow
-            const coreGeo = new THREE.SphereGeometry(0.25, 16, 16);
-            const coreMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-            const core = new THREE.Mesh(coreGeo, coreMat);
-            jutsu.add(core);
-
-            scene.add(jutsu);
-            jutsus.push(jutsu);
-
-            // Trigger burst particle animation visually
-            createSparks(player.position, 0x00aaff, 15);
+            // Spawn slightly in front of player
+            sphere.position.copy(player.position).add(forward.clone().multiplyScalar(2));
+            sphere.position.y = 1.5; // Chest height
+            
+            // Attach precise bounding box for professional collision
+            sphere.geometry.computeBoundingBox();
+            
+            scene.add(sphere);
+            projectiles.push({
+                mesh: sphere,
+                dir: forward,
+                life: 2.0 // Seconds
+            });
         }
 
         function spawnEnemy() {
-            if (isGameOver) return;
-
-            // Spawn in a random circle trajectory away from player
             const angle = Math.random() * Math.PI * 2;
-            const distance = 25 + Math.random() * 10;
-            const x = player.position.x + Math.cos(angle) * distance;
-            const z = player.position.z + Math.sin(angle) * distance;
-
-            const enemy = new THREE.Group();
+            const radius = 30 + Math.random() * 20;
             
-            // Shadow entity body mesh
-            const bodyGeo = new THREE.BoxGeometry(0.8, 1.5, 0.8);
-            const bodyMat = new THREE.MeshStandardMaterial({ color: 0x441155, roughness: 0.4, metalness: 0.3 });
-            const body = new THREE.Mesh(bodyGeo, bodyMat);
-            body.position.y = 0.75;
-            body.castShadow = true;
-            enemy.add(body);
+            // Enemy Mesh (Shadow Clones/Rogue Ninjas)
+            const geo = new THREE.BoxGeometry(1.2, 2.5, 1.2);
+            const mat = new THREE.MeshStandardMaterial({ 
+                color: 0x222233, roughness: 0.7, 
+                emissive: 0xff0000, emissiveIntensity: 0.1 
+            });
+            const mesh = new THREE.Mesh(geo, mat);
+            
+            mesh.position.set(
+                player.position.x + Math.cos(angle) * radius,
+                1.25,
+                player.position.z + Math.sin(angle) * radius
+            );
+            mesh.castShadow = true;
+            
+            // Compute collision box
+            mesh.geometry.computeBoundingBox();
 
-            // Glowing red visual focus sensors (Eyes)
-            const eyeGeo = new THREE.SphereGeometry(0.1, 8, 8);
-            const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff0033 });
-            const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
-            leftEye.position.set(-0.2, 1.2, -0.42);
-            const rightEye = leftEye.clone();
-            rightEye.position.x = 0.2;
-            enemy.add(leftEye, rightEye);
-
-            enemy.position.set(x, 0, z);
-            scene.add(enemy);
-            enemies.push(enemy);
+            scene.add(mesh);
+            enemies.push({ mesh: mesh, hp: 100 });
         }
 
-        function createSparks(pos, colorHex, count) {
-            for (let i = 0; i < count; i++) {
-                const pGeo = new THREE.BufferGeometry();
-                const pMat = new THREE.PointsMaterial({
-                    color: colorHex,
-                    size: 0.2,
-                    transparent: true,
-                    opacity: 1,
-                    blending: THREE.AdditiveBlending
-                });
-                
-                const positions = new Float32Array(3); // 1 particle
-                positions[0] = pos.x;
-                positions[1] = pos.y + 0.5 + (Math.random() - 0.5);
-                positions[2] = pos.z;
-                pGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-                
-                const p = new THREE.Points(pGeo, pMat);
-                p.userData = {
-                    vel: new THREE.Vector3(
-                        (Math.random() - 0.5) * 0.3,
-                        (Math.random() - 0.2) * 0.3,
-                        (Math.random() - 0.5) * 0.3
-                    ),
-                    life: 30 + Math.random() * 20
-                };
-                scene.add(p);
-                particles.push(p);
-            }
-        }
-
-        // --- PIPELINE LOOP ENGINE ---
+        // --- MAIN GAME LOOP ---
         function animate() {
             requestAnimationFrame(animate);
+            const delta = clock.getDelta();
 
-            if (!isGameOver) {
-                updatePlayer();
-                updateJutsus();
-                updateEnemies();
-                updateParticles();
+            if (isPlaying) {
+                if (playerMixer) playerMixer.update(delta);
                 
-                // Natural Passive Chakra Regeneration
-                if (playerStats.chakra < playerStats.maxChakra) {
-                    playerStats.chakra = Math.min(playerStats.maxChakra, playerStats.chakra + 0.1);
-                    updateUI();
+                updatePlayer(delta);
+                updateProjectiles(delta);
+                updateEnemies(delta);
+                
+                // Regenerate Chakra
+                if (state.cp < 100) {
+                    state.cp = Math.min(100, state.cp + (10 * delta));
+                    updateHUD();
                 }
 
-                // Dynamic Spawn rates managed adaptively
-                if (Math.random() < 0.03 && enemies.length < 30) {
-                    spawnEnemy();
-                }
+                // AI Director: Spawn logic
+                if (Math.random() < 0.02 && enemies.length < 15) spawnEnemy();
             }
 
-            renderer.render(scene, camera);
+            // Render via Post-Processing Composer (NOT standard renderer)
+            composer.render();
         }
 
-        function updatePlayer() {
-            moveDirection.set(0, 0, 0);
+        function updatePlayer(delta) {
+            const move = new THREE.Vector3(0, 0, 0);
+            if (keys.w) move.z -= 1;
+            if (keys.s) move.z += 1;
+            if (keys.a) move.x -= 1;
+            if (keys.d) move.x += 1;
 
-            if (keys.w) moveDirection.z -= 1;
-            if (keys.s) moveDirection.z += 1;
-            if (keys.a) moveDirection.x -= 1;
-            if (keys.d) moveDirection.x += 1;
-
-            if (moveDirection.lengthSq() > 0) {
-                moveDirection.normalize();
-                player.position.add(moveDirection.clone().multiplyScalar(PLAYER_SPEED));
+            if (move.lengthSq() > 0) {
+                move.normalize();
+                player.position.add(move.multiplyScalar(SPEED * delta));
                 
-                // Rotate smoothly towards movement target orientation vector
-                const targetRotation = Math.atan2(moveDirection.x, moveDirection.z);
-                player.rotation.y = targetRotation + Math.PI; // Match forward baseline vector mapping
+                // Smooth rotation using slerp for professional feel
+                const targetAngle = Math.atan2(move.x, move.z);
+                const currentQuat = player.quaternion.clone();
+                const targetQuat = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), targetAngle + Math.PI);
+                player.quaternion.slerp(targetQuat, 0.15);
             }
 
-            // Dynamic tracking fluid Camera rigging setup
-            camera.position.set(player.position.x, player.position.y + 10, player.position.z + 14);
+            // Smooth Camera Rig
+            const cameraTarget = new THREE.Vector3(
+                player.position.x, 
+                player.position.y + 12, 
+                player.position.z + 15
+            );
+            camera.position.lerp(cameraTarget, 0.1);
             camera.lookAt(player.position.x, player.position.y + 1, player.position.z);
         }
 
-        function updateJutsus() {
-            for (let i = jutsus.length - 1; i >= 0; i--) {
-                const j = jutsus[i];
-                j.position.add(j.userData.direction.clone().multiplyScalar(JUTSU_SPEED));
-                j.rotation.y += 0.2; // Visual spiral acceleration spin effect
-                j.rotation.x += 0.1;
-                j.userData.life--;
+        function updateProjectiles(delta) {
+            // Backward loop to safely remove elements
+            for (let i = projectiles.length - 1; i >= 0; i--) {
+                const p = projectiles[i];
+                p.life -= delta;
+                
+                if (p.life <= 0) {
+                    scene.remove(p.mesh);
+                    projectiles.splice(i, 1);
+                    continue;
+                }
 
-                // Dynamic broad-phase boundary processing against targets
-                let hitTarget = false;
-                for (let eIdx = enemies.length - 1; eIdx >= 0; eIdx--) {
-                    const enemy = enemies[eIdx];
-                    const dist = j.position.distanceTo(enemy.position);
+                // Move projectile
+                p.mesh.position.add(p.dir.clone().multiplyScalar(PROJECTILE_SPEED * delta));
+                p.mesh.rotation.x += 15 * delta; // Spin effect
+                
+                // Advanced Collision Detection (AABB)
+                const pBox = new THREE.Box3().setFromObject(p.mesh);
+                let hit = false;
+
+                for (let j = enemies.length - 1; j >= 0; j--) {
+                    const e = enemies[j];
+                    const eBox = new THREE.Box3().setFromObject(e.mesh);
                     
-                    if (dist < (j.userData.radius + 0.6)) { // Collision boundary detected
-                        createSparks(enemy.position, 0x00f0ff, 25);
-                        scene.remove(enemy);
-                        enemies.splice(eIdx, 1);
-                        
-                        playerStats.score += 100;
-                        hitTarget = true;
+                    if (pBox.intersectsBox(eBox)) {
+                        // Collision Confirmed
+                        scene.remove(e.mesh);
+                        enemies.splice(j, 1);
+                        state.score += 1;
+                        hit = true;
+                        updateHUD();
                         break;
                     }
                 }
 
-                if (j.userData.life <= 0 || hitTarget || j.position.length() > 150) {
-                    scene.remove(j);
-                    jutsus.splice(i, 1);
+                if (hit) {
+                    scene.remove(p.mesh);
+                    projectiles.splice(i, 1);
                 }
             }
         }
 
-        function updateEnemies() {
+        function updateEnemies(delta) {
+            const playerBox = new THREE.Box3().setFromObject(player);
+
             for (let i = enemies.length - 1; i >= 0; i--) {
-                const enemy = enemies[i];
+                const e = enemies[i];
                 
-                // Target Tracking Logic Vector mapping
-                const dirToPlayer = new THREE.Vector3().subVectors(player.position, enemy.position);
-                dirToPlayer.y = 0; // maintain floor plane locks
-                dirToPlayer.normalize();
+                // Move towards player
+                const dir = new THREE.Vector3().subVectors(player.position, e.mesh.position);
+                dir.y = 0; 
+                dir.normalize();
                 
-                enemy.position.add(dirToPlayer.multiplyScalar(ENEMY_SPEED));
-                enemy.lookAt(player.position.x, enemy.position.y, player.position.z);
+                e.mesh.position.add(dir.multiplyScalar((SPEED * 0.4) * delta));
+                e.mesh.lookAt(player.position.x, e.mesh.position.y, player.position.z);
 
-                // Collision with player check
-                const distanceToPlayer = enemy.position.distanceTo(player.position);
-                if (distanceToPlayer < 1.0) {
-                    playerStats.hp -= 15;
-                    createSparks(player.position, 0xff1100, 10);
-                    updateUI();
-                    
-                    // Remove current invading unit after payload impact clean-up cycles
-                    scene.remove(enemy);
+                // Check collision with player
+                const eBox = new THREE.Box3().setFromObject(e.mesh);
+                if (eBox.intersectsBox(playerBox)) {
+                    state.hp -= 20;
+                    scene.remove(e.mesh);
                     enemies.splice(i, 1);
+                    updateHUD();
 
-                    if (playerStats.hp <= 0) {
-                        endGame();
-                    }
+                    // Flash screen red effect
+                    document.getElementById('hp-fill').style.background = 'white';
+                    setTimeout(() => document.getElementById('hp-fill').style.background = 'linear-gradient(90deg, #ff0044, #ff5555)', 100);
+
+                    if (state.hp <= 0) gameOver();
                 }
             }
         }
 
-        function updateParticles() {
-            for (let i = particles.length - 1; i >= 0; i--) {
-                const p = particles[i];
-                const posArr = p.geometry.attributes.position.array;
-                
-                posArr[0] += p.userData.vel.x;
-                posArr[1] += p.userData.vel.y;
-                posArr[2] += p.userData.vel.z;
-                p.geometry.attributes.position.needsUpdate = true;
-                
-                p.userData.life--;
-                if (p.userData.life <= 0) {
-                    scene.remove(p);
-                    particles.splice(i, 1);
-                }
-            }
+        function updateHUD() {
+            document.getElementById('hp-fill').style.width = `${Math.max(0, state.hp)}%`;
+            document.getElementById('cp-fill').style.width = `${Math.max(0, state.cp)}%`;
+            document.getElementById('score-val').innerText = state.score;
         }
 
-        // --- MANAGEMENT / SYSTEM METHODS ---
-        function updateUI() {
-            document.getElementById('hp-bar').style.width = `${Math.max(0, (playerStats.hp / playerStats.maxHp) * 100)}%`;
-            document.getElementById('chakra-bar').style.width = `${(playerStats.chakra / playerStats.maxChakra) * 100}%`;
-            document.getElementById('score-val').innerText = playerStats.score;
-        }
-
-        function resetGame() {
-            // Clean out current scenes elements collections entirely
-            enemies.forEach(e => scene.remove(e));
-            jutsus.forEach(j => scene.remove(j));
-            particles.forEach(p => scene.remove(p));
+        function gameOver() {
+            isPlaying = false;
+            document.getElementById('overlay').style.display = 'flex';
+            setTimeout(() => document.getElementById('overlay').style.opacity = 1, 10);
             
-            enemies = [];
-            jutsus = [];
-            particles = [];
-
-            // Metrics configuration
-            playerStats = { hp: 100, maxHp: 100, chakra: 100, maxChakra: 100, score: 0 };
-            player.position.set(0, 0, 0);
-            updateUI();
-
-            isGameOver = false;
-            document.getElementById('game-over-screen').classList.remove('active');
+            document.getElementById('title-text').innerText = "MISSION FAILED";
+            document.getElementById('title-text').style.color = "#ff0044";
+            document.getElementById('sub-text').innerText = `Enemies Defeated: ${state.score}`;
+            document.getElementById('action-btn').innerText = "RESTART";
         }
 
-        function endGame() {
-            isGameOver = true;
-            document.getElementById('game-title').innerText = "MISSION FAILED";
-            document.getElementById('game-status-text').innerText = `You fell in battle. Final Score: ${playerStats.score}`;
-            document.getElementById('start-btn').innerText = "Try Again";
-            document.getElementById('game-over-screen').classList.add('active');
+        function resetState() {
+            state.hp = 100;
+            state.cp = 100;
+            state.score = 0;
+            
+            // Clear board
+            enemies.forEach(e => scene.remove(e.mesh));
+            projectiles.forEach(p => scene.remove(p.mesh));
+            enemies.length = 0;
+            projectiles.length = 0;
+            
+            player.position.set(0, 0, 0);
+            updateHUD();
         }
 
         function onWindowResize() {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
+            composer.setSize(window.innerWidth, window.innerHeight);
         }
     </script>
 </body>
