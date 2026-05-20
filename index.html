@@ -260,13 +260,11 @@
     <script>
         window.EngineContext = null;
 
-        // --- EXPLICIT BUTTON MOUNTING INTERCEPTOR ---
         const GameUI = {
             handleStart: () => {
                 document.getElementById('screen-overlay').classList.add('overlay-hidden');
                 document.getElementById('hud-layer').style.opacity = '1';
                 
-                // LAZY INITIALIZATION RUNS HERE (Safeguards menu interface click routines)
                 if (!window.EngineContext) {
                     window.EngineContext = new Engine();
                 }
@@ -286,7 +284,6 @@
             }
         };
 
-        // Standard Event Mapping Framework
         window.addEventListener("load", () => {
             const startBtn = document.getElementById('start-mission-btn');
             const openSettingsBtn = document.getElementById('open-settings-btn');
@@ -531,17 +528,31 @@
             buildMesh() {
                 this.mesh = new THREE.Group();
                 
-                const bodyGeo = new THREE.CapsuleGeometry(0.5, 1.4, 4, 12);
-                const bodyMat = FXManager.createToonMaterial(0xff5500, 0xff3300, 0.2);
-                const body = new THREE.Mesh(bodyGeo, bodyMat);
-                body.position.y = 1.2;
-                body.castShadow = true;
-                this.mesh.add(body);
+                // --- FIXED CAPSULE GEOMETRY FOR THREE.JS R128 ---
+                // Combines a cylinder and two sphere caps to avoid the CapsuleGeometry error
+                const playerMat = FXManager.createToonMaterial(0xff5500, 0xff3300, 0.2);
+                
+                const cylinderGeo = new THREE.CylinderGeometry(0.5, 0.5, 1.0, 12);
+                const bodyCenter = new THREE.Mesh(cylinderGeo, playerMat);
+                bodyCenter.position.y = 1.0;
+                bodyCenter.castShadow = true;
+                this.mesh.add(bodyCenter);
+
+                const capGeo = new THREE.SphereGeometry(0.5, 12, 12);
+                const topCap = new THREE.Mesh(capGeo, playerMat);
+                topCap.position.y = 1.5;
+                topCap.castShadow = true;
+                this.mesh.add(topCap);
+
+                const bottomCap = new THREE.Mesh(capGeo, playerMat);
+                bottomCap.position.y = 0.5;
+                bottomCap.castShadow = true;
+                this.mesh.add(bottomCap);
 
                 const headBandGeo = new THREE.BoxGeometry(0.65, 0.15, 0.45);
                 const headBandMat = new THREE.MeshBasicMaterial({ color: 0x111624 });
                 const headband = new THREE.Mesh(headBandGeo, headBandMat);
-                headband.position.set(0, 1.75, -0.2);
+                headband.position.set(0, 1.6, -0.2);
                 this.mesh.add(headband);
 
                 this.scene.add(this.mesh);
@@ -820,8 +831,6 @@
                 this.renderer.toneMappingExposure = 1.1;
                 this.container.appendChild(this.renderer.domElement);
 
-                // --- PIPELINE FAIL-SAFE RECOVERY LINK ---
-                // If the post-processing scripts are blocked, fallback smoothly to standard rendering context.
                 try {
                     const renderPass = new THREE.RenderPass(this.scene, this.camera);
                     const bloomPass = new THREE.UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.4, 0.4, 0.8);
