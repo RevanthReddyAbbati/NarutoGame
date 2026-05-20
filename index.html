@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Naruto: Shadow of the Shinobi | Production Monolith</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Naruto: Shadow of the Shinobi | Fixed Monolith</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
@@ -29,10 +29,11 @@
             background-color: #030508;
             font-family: 'Segoe UI', system-ui, sans-serif;
             user-select: none; -webkit-user-select: none;
+            touch-action: none;
         }
 
         #game-container {
-            width: 100%; height: 100%; position: absolute; z-index: 1;
+            width: 100%; height: 100%; position: absolute; z-index: 1; top: 0; left: 0;
         }
 
         #flash-overlay {
@@ -41,12 +42,13 @@
             transition: opacity 0.1s ease-out;
         }
 
-        /* Glassmorphic UI HUD Architecture */
+        /* HUD Layer Setup */
         #hud-layer {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             z-index: 10; pointer-events: none;
             display: flex; flex-direction: column; justify-content: space-between;
-            padding: 25px; box-sizing: border-box;
+            padding: 15px; box-sizing: border-box;
+            opacity: 0; transition: opacity 0.3s ease;
         }
 
         .hud-top-left { display: flex; flex-direction: column; gap: 10px; }
@@ -54,55 +56,56 @@
         .hud-character-card {
             background: var(--dark-bg); backdrop-filter: blur(12px);
             border: 1px solid rgba(255,255,255,0.08); border-left: 5px solid var(--anime-orange);
-            padding: 12px 20px; border-radius: 4px; display: flex; align-items: center; gap: 15px;
+            padding: 10px 15px; border-radius: 4px; display: flex; align-items: center; gap: 12px;
             pointer-events: auto; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
         }
 
         .avatar-frame {
-            font-size: 28px; background: rgba(255,255,255,0.05);
-            width: 50px; height: 50px; display: flex; align-items: center;
+            font-size: 24px; background: rgba(255,255,255,0.05);
+            width: 44px; height: 44px; display: flex; align-items: center;
             justify-content: center; border-radius: 50%; border: 1px solid var(--chakra-blue);
             animation: rotateAura 6s linear infinite;
         }
 
-        .bars-container { display: flex; flex-direction: column; gap: 6px; }
-        .stat-bar-wrapper { display: flex; align-items: center; gap: 10px; }
-        .bar-label { font-size: 11px; font-weight: 900; color: #fff; width: 30px; letter-spacing: 1px; }
+        .bars-container { display: flex; flex-direction: column; gap: 4px; }
+        .stat-bar-wrapper { display: flex; align-items: center; gap: 8px; }
+        .bar-label { font-size: 10px; font-weight: 900; color: #fff; width: 25px; letter-spacing: 1px; }
 
         .bar-track {
-            width: 220px; height: 10px; background: rgba(0,0,0,0.6);
-            border-radius: 5px; overflow: hidden; border: 1px solid rgba(255,255,255,0.05);
+            width: 160px; height: 8px; background: rgba(0,0,0,0.6);
+            border-radius: 4px; overflow: hidden; border: 1px solid rgba(255,255,255,0.05);
         }
 
-        .bar-fill { height: 100%; width: 100%; transition: width 0.15s cubic-bezier(0.1, 0.8, 0.3, 1); }
+        @media (min-width: 768px) {
+            .bar-track { width: 220px; }
+        }
+
+        .bar-fill { height: 100%; width: 100%; transition: width 0.15s ease; }
         .hp-gradient { background: linear-gradient(90deg, #b0002a, var(--hp-red)); box-shadow: 0 0 8px var(--hp-red); }
         .chakra-gradient { background: linear-gradient(90deg, #0066cc, var(--chakra-blue)); box-shadow: 0 0 8px var(--chakra-blue); }
         .stamina-gradient { background: linear-gradient(90deg, #169e49, var(--stamina-green)); box-shadow: 0 0 8px var(--stamina-green); }
 
         #level-indicator {
-            color: #fff; font-size: 12px; font-weight: 800; letter-spacing: 2px;
-            background: rgba(0,0,0,0.4); padding: 4px 10px; width: fit-content; border-radius: 3px;
+            color: #fff; font-size: 10px; font-weight: 800; letter-spacing: 2px;
+            background: rgba(0,0,0,0.4); padding: 4px 8px; width: fit-content; border-radius: 3px;
         }
 
-        /* Combo Counter HUD element */
         .hud-top-right { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
 
-        #combo-box {
-            text-align: right; display: none;
-        }
+        #combo-box { text-align: right; display: none; }
         #combo-count {
-            font-size: 64px; font-weight: 900; color: #fff; line-height: 1;
+            font-size: 48px; font-weight: 900; color: #fff; line-height: 1;
             text-shadow: 0 0 20px var(--anime-orange), 0 0 40px #ff0000;
             font-style: italic;
         }
-        #combo-label { font-size: 14px; font-weight: 800; color: var(--anime-orange); letter-spacing: 4px; }
+        #combo-label { font-size: 12px; font-weight: 800; color: var(--anime-orange); letter-spacing: 3px; }
 
         #score-box {
-            background: var(--dark-bg); color: #fff; font-weight: 800; padding: 8px 16px;
-            border-radius: 4px; border: 1px solid rgba(255,255,255,0.05); letter-spacing: 1.5px;
+            background: var(--dark-bg); color: #fff; font-weight: 800; padding: 6px 12px;
+            border-radius: 4px; border: 1px solid rgba(255,255,255,0.05); letter-spacing: 1.5px; font-size: 14px;
         }
 
-        /* UI Screen Overlays */
+        /* Menu Systems */
         .overlay-visible {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: radial-gradient(circle at center, #101624 0%, #030509 100%);
@@ -111,63 +114,65 @@
         }
         .overlay-hidden { opacity: 0; pointer-events: none; transform: scale(1.05); }
 
-        .menu-content { text-align: center; max-width: 600px; padding: 40px; }
+        .menu-content { text-align: center; max-width: 600px; padding: 20px; box-sizing: border-box; width: 100%; }
         .glow-title {
-            font-size: 56px; font-weight: 900; color: #fff; margin: 0;
-            letter-spacing: 6px; text-shadow: 0 0 30px var(--border-glow);
+            font-size: 38px; font-weight: 900; color: #fff; margin: 0;
+            letter-spacing: 4px; text-shadow: 0 0 30px var(--border-glow);
         }
-        .menu-sub { color: var(--chakra-blue); letter-spacing: 4px; font-size: 14px; margin-top: 5px; }
-        .accent-line { border: none; height: 2px; background: linear-gradient(90deg, transparent, var(--anime-orange), transparent); margin: 30px 0; }
+        @media (min-width: 768px) { .glow-title { font-size: 56px; letter-spacing: 6px; } }
+        
+        .menu-sub { color: var(--chakra-blue); letter-spacing: 4px; font-size: 12px; margin-top: 5px; }
+        .accent-line { border: none; height: 2px; background: linear-gradient(90deg, transparent, var(--anime-orange), transparent); margin: 20px 0; }
 
-        .menu-actions { display: flex; flex-direction: column; gap: 15px; align-items: center; }
+        .menu-actions { display: flex; flex-direction: column; gap: 15px; align-items: center; position: relative; z-index: 110; }
 
         .menu-btn {
             background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1);
-            color: #fff; width: 280px; padding: 14px; font-size: 14px; font-weight: 700;
+            color: #fff; width: 260px; padding: 14px; font-size: 14px; font-weight: 700;
             letter-spacing: 3px; border-radius: 4px; cursor: pointer; pointer-events: auto;
-            transition: all 0.25s ease;
+            transition: all 0.25s ease; -webkit-tap-highlight-color: transparent;
         }
-        .menu-btn:hover {
+        .menu-btn:hover, .menu-btn:active {
             background: rgba(255, 107, 0, 0.1); border-color: var(--anime-orange);
-            box-shadow: 0 0 20px var(--border-glow); transform: translateY(-2px);
+            box-shadow: 0 0 20px var(--border-glow);
         }
         .primary-glow { background: var(--anime-orange); color: #000; border: none; font-weight: 800; }
-        .primary-glow:hover { background: #ff8533; color: #000; box-shadow: 0 0 30px rgba(255,107,0,0.6); }
+        .primary-glow:hover, .primary-glow:active { background: #ff8533; color: #000; box-shadow: 0 0 30px rgba(255,107,0,0.6); }
 
-        .control-legend { margin-top: 25px; font-size: 12px; color: #5c6982; line-height: 1.6; }
+        .control-legend { margin-top: 25px; font-size: 11px; color: #5c6982; line-height: 1.6; padding: 0 10px; }
 
-        /* Settings CSS Modal rules */
         .modal-hidden { display: none !important; }
         #settings-modal {
             position: absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85);
             z-index: 200; display:flex; justify-content:center; align-items:center;
         }
         .modal-content {
-            background: #0d131f; border: 1px solid rgba(255,255,255,0.1); padding: 40px;
-            border-radius: 6px; width: 360px; text-align: center;
+            background: #0d131f; border: 1px solid rgba(255,255,255,0.1); padding: 30px;
+            border-radius: 6px; width: 320px; text-align: center; box-sizing: border-box;
         }
-        .modal-content h2 { font-size: 18px; letter-spacing: 2px; color: #fff; margin-bottom: 30px; }
-        .setting-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; color: #a2afc7; font-size: 13px; font-weight: 600; }
+        .modal-content h2 { font-size: 16px; letter-spacing: 2px; color: #fff; margin-bottom: 25px; }
+        .setting-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; color: #a2afc7; font-size: 12px; font-weight: 600; }
 
-        /* Responsive Mobile Layout Rules */
-        #mobile-controls { display: none; width: 100%; pointer-events: none; }
+        /* Dynamic Touch Control UI */
+        #mobile-controls { display: none; width: 100%; pointer-events: none; box-sizing: border-box; }
 
         @media (max-width: 900px) {
             #mobile-controls { display: flex; justify-content: space-between; align-items: flex-end; pointer-events: none; }
             .m-btn {
-                pointer-events: auto; width: 65px; height: 65px; border-radius: 50%;
-                background: rgba(0,0,0,0.6); border: 2px solid rgba(255,255,255,0.2);
-                color: white; font-weight: 900; font-size: 12px; margin-left: 10px;
+                pointer-events: auto; width: 60px; height: 60px; border-radius: 50%;
+                background: rgba(6, 10, 18, 0.75); border: 2px solid rgba(255,255,255,0.15);
+                color: white; font-weight: 900; font-size: 11px; -webkit-tap-highlight-color: transparent;
             }
+            .m-btn:active { background: var(--anime-orange); color: #000; }
             #joystick-zone {
-                width: 130px; height: 130px; background: rgba(255,255,255,0.05);
+                width: 110px; height: 110px; background: rgba(255,255,255,0.03);
                 border-radius: 50%; pointer-events: auto; position: relative; border: 2px solid rgba(255,255,255,0.1);
             }
             #joystick-thumb {
-                width: 50px; height: 50px; background: var(--anime-orange);
-                border-radius: 50%; position: absolute; top: 40px; left: 40px;
+                width: 44px; height: 44px; background: var(--anime-orange);
+                border-radius: 50%; position: absolute; top: 33px; left: 33px; pointer-events: none;
             }
-            #action-buttons-zone { display: flex; gap: 15px; }
+            #action-buttons-zone { display: flex; gap: 10px; }
         }
 
         @keyframes rotateAura { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
@@ -213,9 +218,9 @@
                 <div id="joystick-thumb"></div>
             </div>
             <div id="action-buttons-zone">
-                <button class="m-btn attack-btn" id="m-attack">ATK</button>
-                <button class="m-btn special-btn" id="m-jutsu">JUTSU</button>
-                <button class="m-btn dodge-btn" id="m-dodge">DASH</button>
+                <button class="m-btn" id="m-attack">ATK</button>
+                <button class="m-btn" id="m-jutsu">JUTSU</button>
+                <button class="m-btn" id="m-dodge">DASH</button>
             </div>
         </div>
     </div>
@@ -227,13 +232,13 @@
             <hr class="accent-line">
             
             <div class="menu-actions">
-                <button class="menu-btn primary-glow" onclick="GameUI.handleStart()">COMMENCE MISSION</button>
-                <button class="menu-btn" onclick="GameUI.toggleSettings(true)">SETTINGS</button>
+                <button class="menu-btn primary-glow" id="start-mission-btn">COMMENCE MISSION</button>
+                <button class="menu-btn" id="open-settings-btn">ENGINE SETTINGS</button>
             </div>
 
             <div class="control-legend">
-                <p><strong>[W, A, S, D]</strong> Navigate Arena | <strong>[Shift]</strong> Sprint Dash</p>
-                <p><strong>[Left Click / J]</strong> Taijutsu Combo | <strong>[Spacebar]</strong> Jump | <strong>[E]</strong> Rasendan Strike</p>
+                <p><strong>[W, A, S, D]</strong> Run Around | <strong>[Shift]</strong> Sprint Dash</p>
+                <p><strong>[Left Click / J]</strong> Taijutsu Combo | <strong>[Spacebar]</strong> Jump | <strong>[E]</strong> Rasendan Blast</p>
             </div>
         </div>
     </div>
@@ -249,18 +254,64 @@
                 <label>DYNAMIC ENVIRONMENT FX</label>
                 <input type="checkbox" id="setting-fx" checked>
             </div>
-            <button class="menu-btn" onclick="GameUI.toggleSettings(false)">SAVE & CLOSE</button>
+            <button class="menu-btn" id="close-settings-btn">SAVE & CLOSE</button>
         </div>
     </div>
 
     <script>
-        // Global system execution hooks
+        // Global system variables
         window.EngineContext = null;
+
+        // --- GLOBAL UI MANAGEMENT ROUTER ---
+        const GameUI = {
+            handleStart: () => {
+                document.getElementById('screen-overlay').classList.add('overlay-hidden');
+                document.getElementById('hud-layer').style.opacity = '1';
+                if(window.EngineContext) {
+                    window.EngineContext.bootSequence();
+                }
+            },
+            toggleSettings: (open) => {
+                document.getElementById('settings-modal').className = open ? '' : 'modal-hidden';
+            },
+            showGameOver: (score) => {
+                const overlay = document.getElementById('screen-overlay');
+                document.querySelector('.glow-title').innerText = "MISSION FAILED";
+                document.querySelector('.glow-title').style.color = "#ff2a5f";
+                document.querySelector('.menu-sub').innerText = `FINAL SCORE: ${score} SHINOBI BOUNTIES COLLECTED`;
+                document.querySelector('.menu-actions').innerHTML = `<button class="menu-btn primary-glow" onclick="window.location.reload()">RE-ENTER ARENA</button>`;
+                overlay.classList.remove('overlay-hidden');
+                document.getElementById('hud-layer').style.opacity = '0';
+            }
+        };
+
+        // UI Event Binding Interceptor to fix mobile touch locks
+        document.addEventListener("DOMContentLoaded", () => {
+            const startBtn = document.getElementById('start-mission-btn');
+            const openSettingsBtn = document.getElementById('open-settings-btn');
+            const closeSettingsBtn = document.getElementById('close-settings-btn');
+
+            if(startBtn) {
+                startBtn.addEventListener('click', GameUI.handleStart);
+                startBtn.addEventListener('touchstart', (e) => { e.preventDefault(); GameUI.handleStart(); });
+            }
+            if(openSettingsBtn) {
+                openSettingsBtn.addEventListener('click', () => GameUI.toggleSettings(true));
+                openSettingsBtn.addEventListener('touchstart', (e) => { e.preventDefault(); GameUI.toggleSettings(true); });
+            }
+            if(closeSettingsBtn) {
+                closeSettingsBtn.addEventListener('click', () => GameUI.toggleSettings(false));
+                closeSettingsBtn.addEventListener('touchstart', (e) => { e.preventDefault(); GameUI.toggleSettings(false); });
+            }
+
+            // Initialize the engine instance
+            window.EngineContext = new Engine();
+        });
 
         class InputManager {
             constructor() {
                 this.keys = { w: false, a: false, s: false, d: false, shift: false, space: false, e: false, j: false };
-                this.mouse = { x: 0, y: 0, down: false };
+                this.mouse = { x: 0, y: 0 };
                 this.joystick = { active: false, startX: 0, startY: 0, vector: new THREE.Vector2() };
                 
                 this.initKeyboardListeners();
@@ -341,7 +392,7 @@
                     const btn = document.getElementById(elemId);
                     if(btn) {
                         btn.addEventListener('touchstart', (e) => { e.preventDefault(); this.keys[targetAction] = true; });
-                        btn.addEventListener('touchend', () => { this.keys[targetAction] = false; });
+                        btn.addEventListener('touchend', (e) => { e.preventDefault(); this.keys[targetAction] = false; });
                     }
                 };
 
@@ -361,82 +412,4 @@
                 if (this.keys.s) move.z += 1;
                 if (this.keys.a) move.x -= 1;
                 if (this.keys.d) move.x += 1;
-                return move.normalize();
-            }
-        }
-
-        class FXManager {
-            constructor(scene, camera) {
-                this.scene = scene;
-                this.camera = camera;
-                this.particles = [];
-                this.shakeIntensity = 0;
-                this.shakeDecay = 0;
-            }
-
-            static createToonMaterial(baseColor, emissiveColor = 0x000000, emissiveIntensity = 0) {
-                return new THREE.MeshStandardMaterial({
-                    color: baseColor,
-                    roughness: 0.5,
-                    metalness: 0.2,
-                    emissive: emissiveColor,
-                    emissiveIntensity: emissiveIntensity,
-                    flatShading: true
-                });
-            }
-
-            triggerScreenShake(intensity, duration) {
-                this.shakeIntensity = intensity;
-                this.shakeDecay = intensity / duration;
-            }
-
-            spawnChakraSparks(position, colorHex, count = 15) {
-                const pGeo = new THREE.SphereGeometry(0.1, 4, 4);
-                const pMat = new THREE.MeshBasicMaterial({
-                    color: colorHex,
-                    transparent: true,
-                    blending: THREE.AdditiveBlending
-                });
-
-                for (let i = 0; i < count; i++) {
-                    const m = new THREE.Mesh(pGeo, pMat.clone());
-                    m.position.copy(position);
-                    m.userData = {
-                        velocity: new THREE.Vector3(
-                            (Math.random() - 0.5) * 14,
-                            (Math.random() * 8) + 3,
-                            (Math.random() - 0.5) * 14
-                        ),
-                        life: 0.3 + Math.random() * 0.4
-                    };
-                    this.particles.push(m);
-                    this.scene.add(m);
-                }
-            }
-
-            spawnEnergyTrail(origin, destination, colorHex) {
-                const points = [origin, destination];
-                const lineGeo = new THREE.BufferGeometry().setFromPoints(points);
-                const lineMat = new THREE.LineBasicMaterial({ 
-                    color: colorHex, 
-                    linewidth: 5, 
-                    transparent: true, 
-                    opacity: 1 
-                });
-                const line = new THREE.Line(lineGeo, lineMat);
-                this.scene.add(line);
-
-                setTimeout(() => {
-                    let fade = setInterval(() => {
-                        line.material.opacity -= 0.2;
-                        if(line.material.opacity <= 0) {
-                            clearInterval(fade);
-                            this.scene.remove(line);
-                            line.geometry.dispose();
-                            line.material.dispose();
-                        }
-                    }, 30);
-                }, 40);
-            }
-
-    
+     
