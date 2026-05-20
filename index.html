@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Naruto: Shadow of the Shinobi | Fixed Monolith</title>
+    <title>Naruto: Shadow of the Shinobi | Ultimate Fixed Edition</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
@@ -42,7 +42,7 @@
             transition: opacity 0.1s ease-out;
         }
 
-        /* HUD Layer Setup */
+        /* Interface HUD Structure */
         #hud-layer {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             z-index: 10; pointer-events: none;
@@ -76,9 +76,7 @@
             border-radius: 4px; overflow: hidden; border: 1px solid rgba(255,255,255,0.05);
         }
 
-        @media (min-width: 768px) {
-            .bar-track { width: 220px; }
-        }
+        @media (min-width: 768px) { .bar-track { width: 220px; } }
 
         .bar-fill { height: 100%; width: 100%; transition: width 0.15s ease; }
         .hp-gradient { background: linear-gradient(90deg, #b0002a, var(--hp-red)); box-shadow: 0 0 8px var(--hp-red); }
@@ -105,12 +103,13 @@
             border-radius: 4px; border: 1px solid rgba(255,255,255,0.05); letter-spacing: 1.5px; font-size: 14px;
         }
 
-        /* Menu Systems */
+        /* Overlay Menu Screens */
         .overlay-visible {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: radial-gradient(circle at center, #101624 0%, #030509 100%);
             z-index: 100; display: flex; justify-content: center; align-items: center;
             transition: opacity 0.4s ease, transform 0.4s ease; opacity: 1;
+            pointer-events: auto;
         }
         .overlay-hidden { opacity: 0; pointer-events: none; transform: scale(1.05); }
 
@@ -124,16 +123,16 @@
         .menu-sub { color: var(--chakra-blue); letter-spacing: 4px; font-size: 12px; margin-top: 5px; }
         .accent-line { border: none; height: 2px; background: linear-gradient(90deg, transparent, var(--anime-orange), transparent); margin: 20px 0; }
 
-        .menu-actions { display: flex; flex-direction: column; gap: 15px; align-items: center; position: relative; z-index: 110; }
+        .menu-actions { display: flex; flex-direction: column; gap: 15px; align-items: center; }
 
         .menu-btn {
-            background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1);
+            background: rgba(255,255,255,0.05); border: 2px solid rgba(255,255,255,0.15);
             color: #fff; width: 260px; padding: 14px; font-size: 14px; font-weight: 700;
             letter-spacing: 3px; border-radius: 4px; cursor: pointer; pointer-events: auto;
             transition: all 0.25s ease; -webkit-tap-highlight-color: transparent;
         }
         .menu-btn:hover, .menu-btn:active {
-            background: rgba(255, 107, 0, 0.1); border-color: var(--anime-orange);
+            background: rgba(255, 107, 0, 0.2); border-color: var(--anime-orange);
             box-shadow: 0 0 20px var(--border-glow);
         }
         .primary-glow { background: var(--anime-orange); color: #000; border: none; font-weight: 800; }
@@ -153,7 +152,7 @@
         .modal-content h2 { font-size: 16px; letter-spacing: 2px; color: #fff; margin-bottom: 25px; }
         .setting-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; color: #a2afc7; font-size: 12px; font-weight: 600; }
 
-        /* Dynamic Touch Control UI */
+        /* Touch Interfaces */
         #mobile-controls { display: none; width: 100%; pointer-events: none; box-sizing: border-box; }
 
         @media (max-width: 900px) {
@@ -259,17 +258,19 @@
     </div>
 
     <script>
-        // Global system variables
         window.EngineContext = null;
 
-        // --- GLOBAL UI MANAGEMENT ROUTER ---
+        // --- EXPLICIT BUTTON MOUNTING INTERCEPTOR ---
         const GameUI = {
             handleStart: () => {
                 document.getElementById('screen-overlay').classList.add('overlay-hidden');
                 document.getElementById('hud-layer').style.opacity = '1';
-                if(window.EngineContext) {
-                    window.EngineContext.bootSequence();
+                
+                // LAZY INITIALIZATION RUNS HERE (Safeguards menu interface click routines)
+                if (!window.EngineContext) {
+                    window.EngineContext = new Engine();
                 }
+                window.EngineContext.bootSequence();
             },
             toggleSettings: (open) => {
                 document.getElementById('settings-modal').className = open ? '' : 'modal-hidden';
@@ -285,27 +286,21 @@
             }
         };
 
-        // UI Event Binding Interceptor to fix mobile touch locks
-        document.addEventListener("DOMContentLoaded", () => {
+        // Standard Event Mapping Framework
+        window.addEventListener("load", () => {
             const startBtn = document.getElementById('start-mission-btn');
             const openSettingsBtn = document.getElementById('open-settings-btn');
             const closeSettingsBtn = document.getElementById('close-settings-btn');
 
             if(startBtn) {
-                startBtn.addEventListener('click', GameUI.handleStart);
-                startBtn.addEventListener('touchstart', (e) => { e.preventDefault(); GameUI.handleStart(); });
+                startBtn.onclick = (e) => { e.preventDefault(); GameUI.handleStart(); };
             }
             if(openSettingsBtn) {
-                openSettingsBtn.addEventListener('click', () => GameUI.toggleSettings(true));
-                openSettingsBtn.addEventListener('touchstart', (e) => { e.preventDefault(); GameUI.toggleSettings(true); });
+                openSettingsBtn.onclick = (e) => { e.preventDefault(); GameUI.toggleSettings(true); };
             }
             if(closeSettingsBtn) {
-                closeSettingsBtn.addEventListener('click', () => GameUI.toggleSettings(false));
-                closeSettingsBtn.addEventListener('touchstart', (e) => { e.preventDefault(); GameUI.toggleSettings(false); });
+                closeSettingsBtn.onclick = (e) => { e.preventDefault(); GameUI.toggleSettings(false); };
             }
-
-            // Initialize the engine instance
-            window.EngineContext = new Engine();
         });
 
         class InputManager {
@@ -412,4 +407,507 @@
                 if (this.keys.s) move.z += 1;
                 if (this.keys.a) move.x -= 1;
                 if (this.keys.d) move.x += 1;
-     
+                return move.normalize();
+            }
+        }
+
+        class FXManager {
+            constructor(scene, camera) {
+                this.scene = scene;
+                this.camera = camera;
+                this.particles = [];
+                this.shakeIntensity = 0;
+                this.shakeDecay = 0;
+            }
+
+            static createToonMaterial(baseColor, emissiveColor = 0x000000, emissiveIntensity = 0) {
+                return new THREE.MeshStandardMaterial({
+                    color: baseColor,
+                    roughness: 0.5,
+                    metalness: 0.2,
+                    emissive: emissiveColor,
+                    emissiveIntensity: emissiveIntensity,
+                    flatShading: true
+                });
+            }
+
+            triggerScreenShake(intensity, duration) {
+                this.shakeIntensity = intensity;
+                this.shakeDecay = intensity / duration;
+            }
+
+            spawnChakraSparks(position, colorHex, count = 15) {
+                const pGeo = new THREE.SphereGeometry(0.1, 4, 4);
+                const pMat = new THREE.MeshBasicMaterial({
+                    color: colorHex,
+                    transparent: true,
+                    blending: THREE.AdditiveBlending
+                });
+
+                for (let i = 0; i < count; i++) {
+                    const m = new THREE.Mesh(pGeo, pMat.clone());
+                    m.position.copy(position);
+                    m.userData = {
+                        velocity: new THREE.Vector3(
+                            (Math.random() - 0.5) * 14,
+                            (Math.random() * 8) + 3,
+                            (Math.random() - 0.5) * 14
+                        ),
+                        life: 0.3 + Math.random() * 0.4
+                    };
+                    this.particles.push(m);
+                    this.scene.add(m);
+                }
+            }
+
+            spawnEnergyTrail(origin, destination, colorHex) {
+                const points = [origin, destination];
+                const lineGeo = new THREE.BufferGeometry().setFromPoints(points);
+                const lineMat = new THREE.LineBasicMaterial({ 
+                    color: colorHex, 
+                    linewidth: 5, 
+                    transparent: true, 
+                    opacity: 1 
+                });
+                const line = new THREE.Line(lineGeo, lineMat);
+                this.scene.add(line);
+
+                setTimeout(() => {
+                    let fade = setInterval(() => {
+                        line.material.opacity -= 0.2;
+                        if(line.material.opacity <= 0) {
+                            clearInterval(fade);
+                            this.scene.remove(line);
+                            line.geometry.dispose();
+                            line.material.dispose();
+                        }
+                    }, 30);
+                }, 40);
+            }
+
+            update(delta) {
+                if (this.shakeIntensity > 0) {
+                    this.camera.position.x += (Math.random() - 0.5) * this.shakeIntensity;
+                    this.camera.position.y += (Math.random() - 0.5) * this.shakeIntensity;
+                    this.shakeIntensity -= this.shakeDecay * delta;
+                }
+
+                for (let i = this.particles.length - 1; i >= 0; i--) {
+                    const p = this.particles[i];
+                    p.position.addScaledVector(p.userData.velocity, delta);
+                    p.userData.velocity.y -= 12 * delta; 
+                    p.userData.life -= delta;
+                    p.material.opacity = Math.max(0, p.userData.life);
+
+                    if (p.userData.life <= 0) {
+                        this.scene.remove(p);
+                        this.particles.splice(i, 1);
+                    }
+                }
+            }
+        }
+
+        class Player {
+            constructor(scene, fxManager) {
+                this.scene = scene;
+                this.fx = fxManager;
+                
+                this.hp = 100;
+                this.chakra = 100;
+                this.stamina = 100;
+                this.score = 0;
+                this.comboCount = 0;
+                this.comboTimer = 0;
+                
+                this.velocity = new THREE.Vector3();
+                this.isGrounded = true;
+                this.isDashing = false;
+                this.attackCooldown = 0;
+                this.jutsuCooldown = 0;
+                
+                this.buildMesh();
+            }
+
+            buildMesh() {
+                this.mesh = new THREE.Group();
+                
+                const bodyGeo = new THREE.CapsuleGeometry(0.5, 1.4, 4, 12);
+                const bodyMat = FXManager.createToonMaterial(0xff5500, 0xff3300, 0.2);
+                const body = new THREE.Mesh(bodyGeo, bodyMat);
+                body.position.y = 1.2;
+                body.castShadow = true;
+                this.mesh.add(body);
+
+                const headBandGeo = new THREE.BoxGeometry(0.65, 0.15, 0.45);
+                const headBandMat = new THREE.MeshBasicMaterial({ color: 0x111624 });
+                const headband = new THREE.Mesh(headBandGeo, headBandMat);
+                headband.position.set(0, 1.75, -0.2);
+                this.mesh.add(headband);
+
+                this.scene.add(this.mesh);
+            }
+
+            update(delta, input) {
+                if (this.comboTimer > 0) {
+                    this.comboTimer -= delta;
+                    if (this.comboTimer <= 0) this.resetCombo();
+                }
+                if (this.attackCooldown > 0) this.attackCooldown -= delta;
+                if (this.jutsuCooldown > 0) this.jutsuCooldown -= delta;
+
+                if (this.stamina < 100) this.stamina = Math.min(100, this.stamina + 25 * delta);
+                if (this.chakra < 100) this.chakra = Math.min(100, this.chakra + 10 * delta);
+
+                this.handleCombatInput(input);
+                this.handleMovement(delta, input);
+            }
+
+            handleMovement(delta, input) {
+                let move = input.getMovementVector();
+                let currentSpeed = input.keys.shift && this.stamina > 20 && move.lengthSq() > 0 ? 15 : 8;
+
+                if (currentSpeed === 15 && this.isGrounded) {
+                    this.stamina -= 40 * delta;
+                    this.fx.spawnChakraSparks(this.mesh.position, 0xffffff, 1);
+                }
+
+                this.velocity.x = move.x * currentSpeed;
+                this.velocity.z = move.z * currentSpeed;
+
+                if (!this.isGrounded) {
+                    this.velocity.y -= 32 * delta; 
+                } else {
+                    this.velocity.y = 0;
+                    if (input.keys.space) {
+                        this.velocity.y = 14; 
+                        this.isGrounded = false;
+                        this.fx.spawnChakraSparks(this.mesh.position, 0x00dfff, 10);
+                    }
+                }
+
+                this.mesh.position.addScaledVector(this.velocity, delta);
+
+                if (this.mesh.position.y <= 0) {
+                    this.mesh.position.y = 0;
+                    this.isGrounded = true;
+                }
+
+                if (move.lengthSq() > 0) {
+                    const targetAngle = Math.atan2(move.x, move.z);
+                    const targetQuat = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), targetAngle + Math.PI);
+                    this.mesh.quaternion.slerp(targetQuat, 0.2);
+                }
+            }
+
+            handleCombatInput(input) {
+                if (input.keys.j && this.attackCooldown <= 0) {
+                    this.executeMeleeStrike();
+                }
+                if (input.keys.e && this.jutsuCooldown <= 0 && this.chakra >= 25) {
+                    this.executeNinjutsuStrike();
+                }
+            }
+
+            executeMeleeStrike() {
+                this.attackCooldown = 0.2;
+                this.comboCount++;
+                this.comboTimer = 1.5;
+                
+                document.getElementById('flash-overlay').style.opacity = '0.1';
+                setTimeout(() => document.getElementById('flash-overlay').style.opacity = '0', 30);
+
+                this.fx.triggerScreenShake(0.15, 0.08);
+                
+                const attackOrigin = this.mesh.position.clone();
+                const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(this.mesh.quaternion).normalize();
+                const strikePoint = attackOrigin.clone().addScaledVector(forward, 2.2);
+
+                this.fx.spawnEnergyTrail(attackOrigin.clone().add(new THREE.Vector3(0,1,0)), strikePoint.clone().add(new THREE.Vector3(0,1,0)), 0xff6b00);
+                this.fx.spawnChakraSparks(strikePoint, 0xffaa00, 6);
+
+                window.EngineContext.enemies.registerStrikeCheck(strikePoint, 2.8, 12);
+                UI.incrementCombo(this.comboCount);
+            }
+
+            executeNinjutsuStrike() {
+                this.chakra -= 25;
+                this.jutsuCooldown = 0.6;
+                
+                this.fx.triggerScreenShake(0.5, 0.15);
+                const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(this.mesh.quaternion).normalize();
+                
+                const flash = document.getElementById('flash-overlay');
+                flash.style.background = '#00dfff';
+                flash.style.opacity = '0.3';
+                setTimeout(() => { flash.style.opacity = '0'; flash.style.background = 'white'; }, 100);
+
+                this.fx.spawnChakraSparks(this.mesh.position, 0x00dfff, 25);
+                
+                const blastEnd = this.mesh.position.clone().addScaledVector(forward, 18);
+                this.fx.spawnEnergyTrail(this.mesh.position.clone().add(new THREE.Vector3(0,1,0)), blastEnd.clone().add(new THREE.Vector3(0,1,0)), 0x00dfff);
+
+                window.EngineContext.enemies.registerLineStrikeCheck(this.mesh.position, blastEnd, 3.0, 35);
+            }
+
+            takeDamage(amount) {
+                this.hp = Math.max(0, this.hp - amount);
+                this.fx.triggerScreenShake(0.6, 0.25);
+                this.fx.spawnChakraSparks(this.mesh.position, 0xff0044, 15);
+                
+                if(this.hp <= 0) {
+                    window.EngineContext.terminateGame();
+                }
+            }
+
+            resetCombo() { this.comboCount = 0; UI.hideCombo(); }
+        }
+
+        class EnemyDirector {
+            constructor(scene, fxManager) {
+                this.scene = scene;
+                this.fx = fxManager;
+                this.pool = [];
+                this.spawnTimer = 0;
+            }
+
+            spawn() {
+                const angle = Math.random() * Math.PI * 2;
+                const radius = 20 + Math.random() * 10;
+                const spawnX = window.EngineContext.player.mesh.position.x + Math.cos(angle) * radius;
+                const spawnZ = window.EngineContext.player.mesh.position.z + Math.sin(angle) * radius;
+
+                const container = new THREE.Group();
+                const geo = new THREE.BoxGeometry(1, 2, 1);
+                const mat = FXManager.createToonMaterial(0x1a1a24, 0xff0044, 0.1);
+                const mesh = new THREE.Mesh(geo, mat);
+                mesh.position.y = 1;
+                mesh.castShadow = true;
+                container.add(mesh);
+
+                const eyeGeo = new THREE.BoxGeometry(0.7, 0.1, 0.1);
+                const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff0044 });
+                const eyes = new THREE.Mesh(eyeGeo, eyeMat);
+                eyes.position.set(0, 1.5, -0.51);
+                container.add(eyes);
+
+                container.position.set(spawnX, 0, spawnZ);
+                this.scene.add(container);
+
+                this.pool.push({
+                    mesh: container,
+                    hp: 24,
+                    speed: 4.0 + Math.random() * 2,
+                    attackRange: 1.6,
+                    cooldown: 0
+                });
+            }
+
+            update(delta, playerPos) {
+                this.spawnTimer += delta;
+                if (this.spawnTimer >= 1.2 && this.pool.length < 15) {
+                    this.spawn();
+                    this.spawnTimer = 0;
+                }
+
+                for (let i = this.pool.length - 1; i >= 0; i--) {
+                    const e = this.pool[i];
+                    const distance = e.mesh.position.distanceTo(playerPos);
+                    const dir = new THREE.Vector3().subVectors(playerPos, e.mesh.position);
+                    dir.y = 0;
+                    dir.normalize();
+
+                    e.mesh.lookAt(playerPos.x, e.mesh.position.y, playerPos.z);
+
+                    if (distance > e.attackRange) {
+                        e.mesh.position.addScaledVector(dir, e.speed * delta);
+                    } else {
+                        if (e.cooldown <= 0) {
+                            e.cooldown = 1.2; 
+                            window.EngineContext.player.takeDamage(8);
+                        }
+                    }
+                    if (e.cooldown > 0) e.cooldown -= delta;
+                }
+            }
+
+            registerStrikeCheck(point, radius, damage) {
+                for (let i = this.pool.length - 1; i >= 0; i--) {
+                    const e = this.pool[i];
+                    if (e.mesh.position.distanceTo(point) <= radius) {
+                        e.hp -= damage;
+                        this.fx.spawnChakraSparks(e.mesh.position, 0xff0022, 5);
+                        if (e.hp <= 0) this.executeDeath(e, i);
+                    }
+                }
+            }
+
+            registerLineStrikeCheck(start, end, maxRadius, damage) {
+                const line = new THREE.Line3(start, end);
+                const closestPoint = new THREE.Vector3();
+
+                for (let i = this.pool.length - 1; i >= 0; i--) {
+                    const e = this.pool[i];
+                    line.closestPointToPoint(e.mesh.position, true, closestPoint);
+                    if (e.mesh.position.distanceTo(closestPoint) <= maxRadius) {
+                        e.hp -= damage;
+                        if (e.hp <= 0) this.executeDeath(e, i);
+                    }
+                }
+            }
+
+            executeDeath(enemy, index) {
+                this.fx.spawnChakraSparks(enemy.mesh.position, 0x1a1a24, 15);
+                this.scene.remove(enemy.mesh);
+                this.pool.splice(index, 1);
+                window.EngineContext.player.score += 100;
+            }
+
+            clearAll() {
+                this.pool.forEach(e => this.scene.remove(e.mesh));
+                this.pool = [];
+            }
+        }
+
+        class UI {
+            static updateHUD(player) {
+                document.getElementById('bar-hp').style.width = `${player.hp}%`;
+                document.getElementById('bar-chakra').style.width = `${player.chakra}%`;
+                document.getElementById('bar-stamina').style.width = `${player.stamina}%`;
+                document.getElementById('score-val').innerText = player.score;
+            }
+
+            static incrementCombo(count) {
+                const box = document.getElementById('combo-box');
+                box.style.display = 'block';
+                document.getElementById('combo-count').innerText = count;
+            }
+
+            static hideCombo() {
+                document.getElementById('combo-box').style.display = 'none';
+            }
+        }
+
+        class Engine {
+            constructor() {
+                this.container = document.getElementById('game-container');
+                this.clock = new THREE.Clock();
+                this.isActive = false;
+
+                this.initWebGL();
+                this.initEnvironment();
+                
+                this.input = new InputManager();
+                this.fx = new FXManager(this.scene, this.camera);
+                this.player = new Player(this.scene, this.fx);
+                this.enemies = new EnemyDirector(this.scene, this.fx);
+
+                window.addEventListener('resize', () => this.handleResize());
+            }
+
+            initWebGL() {
+                this.scene = new THREE.Scene();
+                this.scene.background = new THREE.Color(0x04060a);
+                this.scene.fog = new THREE.FogExp2(0x04060a, 0.015);
+
+                this.camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+                
+                this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+                this.renderer.shadowMap.enabled = true;
+                this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+                this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+                this.renderer.toneMappingExposure = 1.1;
+                this.container.appendChild(this.renderer.domElement);
+
+                // --- PIPELINE FAIL-SAFE RECOVERY LINK ---
+                // If the post-processing scripts are blocked, fallback smoothly to standard rendering context.
+                try {
+                    const renderPass = new THREE.RenderPass(this.scene, this.camera);
+                    const bloomPass = new THREE.UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.4, 0.4, 0.8);
+                    
+                    this.composer = new THREE.EffectComposer(this.renderer);
+                    this.composer.addPass(renderPass);
+                    this.composer.addPass(bloomPass);
+                    this.useComposer = true;
+                } catch(e) {
+                    console.warn("Post-processing blocked or unavailable. Falling back to default WebGL Pipeline.");
+                    this.useComposer = false;
+                }
+            }
+
+            initEnvironment() {
+                const hemiLight = new THREE.HemisphereLight(0x243454, 0x0a0f1d, 0.6);
+                this.scene.add(hemiLight);
+
+                const sunLight = new THREE.DirectionalLight(0xffaa66, 1.2);
+                sunLight.position.set(30, 50, 20);
+                sunLight.castShadow = true;
+                this.scene.add(sunLight);
+
+                const floorGeo = new THREE.PlaneGeometry(400, 400);
+                const floorMat = new THREE.MeshStandardMaterial({ color: 0x070a12, roughness: 0.3, metalness: 0.8 });
+                const floor = new THREE.Mesh(floorGeo, floorMat);
+                floor.rotation.x = -Math.PI / 2;
+                floor.receiveShadow = true;
+                this.scene.add(floor);
+
+                const arenaGrid = new THREE.GridHelper(400, 80, 0xff6b00, 0x101826);
+                arenaGrid.position.y = 0.01;
+                arenaGrid.material.opacity = 0.2;
+                arenaGrid.material.transparent = true;
+                this.scene.add(arenaGrid);
+            }
+
+            bootSequence() {
+                this.isActive = true;
+                this.clock.getDelta(); 
+                this.runLoop();
+            }
+
+            runLoop() {
+                if (!this.isActive) return;
+                requestAnimationFrame(() => this.runLoop());
+
+                const delta = Math.min(this.clock.getDelta(), 0.1);
+
+                this.player.update(delta, this.input);
+                this.enemies.update(delta, this.player.mesh.position);
+                this.fx.update(delta);
+
+                this.updateCamera();
+                UI.updateHUD(this.player);
+
+                if (this.useComposer && this.composer) {
+                    this.composer.render();
+                } else {
+                    this.renderer.render(this.scene, this.camera);
+                }
+            }
+
+            updateCamera() {
+                const idealOffset = new THREE.Vector3(0, 14, 20).applyQuaternion(this.player.mesh.quaternion);
+                const targetCamPos = this.player.mesh.position.clone().add(idealOffset);
+                
+                this.camera.position.lerp(targetCamPos, 0.08);
+                this.camera.lookAt(this.player.mesh.position.clone().add(new THREE.Vector3(0, 1.5, 0)));
+            }
+
+            terminateGame() {
+                this.isActive = false;
+                GameUI.showGameOver(this.player.score);
+                this.enemies.clearAll();
+            }
+
+            handleResize() {
+                this.camera.aspect = window.innerWidth / window.innerHeight;
+                this.camera.updateProjectionMatrix();
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                if (this.useComposer && this.composer) {
+                    this.composer.setSize(window.innerWidth, window.innerHeight);
+                }
+            }
+        }
+    </script>
+</body>
+</html>
